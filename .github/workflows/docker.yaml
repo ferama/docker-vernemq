@@ -28,7 +28,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/vernemq
+          images: ${{ env.REGISTRY }}/ferama/vernemq
 
       - name: Build and push
         uses: docker/build-push-action@v4
