@@ -1,3 +1,24 @@
+FROM erlang:24.3.4.5 AS build-env
+
+WORKDIR /vernemq-build
+
+ARG VERNEMQ_GIT_REF=1.12.6.2
+ARG TARGET=rel
+ARG VERNEMQ_REPO=https://github.com/vernemq/vernemq.git
+
+# Defaults
+ENV DOCKER_VERNEMQ_KUBERNETES_LABEL_SELECTOR="app=vernemq" \
+    DOCKER_VERNEMQ_LOG__CONSOLE=console
+
+RUN apt-get update && \
+    apt-get -y install build-essential git libssl-dev libsnappy-dev && \
+    git clone -b $VERNEMQ_GIT_REF $VERNEMQ_REPO .
+
+COPY bin/build.sh build.sh
+
+RUN ./build.sh $TARGET
+
+
 FROM debian:bullseye-slim
 
 RUN apt-get update && \
@@ -15,13 +36,10 @@ ENV DOCKER_VERNEMQ_KUBERNETES_LABEL_SELECTOR="app=vernemq" \
     VERNEMQ_VERSION="1.12.6.2"
 COPY --chown=10000:10000 bin/vernemq.sh /usr/sbin/start_vernemq
 COPY --chown=10000:10000 files/vm.args /vernemq/etc/vm.args
+COPY --chown=10000:10000 --from=build-env /vernemq-build/release /vernemq
 
-# Note that the following copies a binary package under EULA (requiring a paid subscription).
-RUN curl -L https://github.com/vernemq/vernemq/releases/download/$VERNEMQ_VERSION/vernemq-$VERNEMQ_VERSION.bullseye.tar.gz -o /tmp/vernemq-$VERNEMQ_VERSION.bullseye.tar.gz && \
-    tar -xzvf /tmp/vernemq-$VERNEMQ_VERSION.bullseye.tar.gz && \
-    rm /tmp/vernemq-$VERNEMQ_VERSION.bullseye.tar.gz && \
-    chown -R 10000:10000 /vernemq && \
-    ln -s /vernemq/etc /etc/vernemq && \
+
+RUN ln -s /vernemq/etc /etc/vernemq && \
     ln -s /vernemq/data /var/lib/vernemq && \
     ln -s /vernemq/log /var/log/vernemq
 
